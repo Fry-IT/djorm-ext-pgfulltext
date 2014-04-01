@@ -105,7 +105,7 @@ class SearchManagerMixIn(object):
         # Add 'update_search_field' instance method, that calls manager's update_search_field.
         if not getattr(cls, 'update_search_field', None):
             def update_search_field(self, using=None, config=None):
-                self._fts_manager.update_search_field(pk=self.pk, using=using, config=config)
+                self._fts_manager.update_search_field(pk=self.pk, using=using, config=config, instance=self)
             setattr(cls, 'update_search_field', update_search_field)
 
         if self.auto_update_search_field:
@@ -119,7 +119,7 @@ class SearchManagerMixIn(object):
     def search(self, *args, **kwargs):
         return self.get_query_set().search(*args, **kwargs)
 
-    def update_search_field(self, pk=None, config=None, using=None):
+    def update_search_field(self, pk=None, config=None, using=None, instance=None):
         '''
         Update the search_field of one instance, or a list of instances, or
         all instances in the table (pk is one key, a list of keys or none).
@@ -152,7 +152,7 @@ class SearchManagerMixIn(object):
                 ','.join(repeat("%s", len(params)))
             )
 
-        search_vector = self._get_search_vector(config, using)
+        search_vector = self._get_search_vector(config, using, instance=instance)
         sql = "UPDATE %s SET %s = %s %s;" % (
             qn(self.model._meta.db_table),
             qn(self.search_field),
@@ -195,7 +195,7 @@ class SearchManagerMixIn(object):
 
         return parsed_fields
 
-    def _get_search_vector(self, config, using, fields=None):
+    def _get_search_vector(self, config, using, fields=None, instance=None):
         if fields is None:
             vector_fields = self._parse_fields(self._fields)
         else:
@@ -204,6 +204,15 @@ class SearchManagerMixIn(object):
         search_vector = []
         for field_name, weight in vector_fields:
             search_vector.append(self._get_vector_for_field(field_name, weight, config, using))
+
+        if instance is not None:
+            instance_method = getattr(instance, 'get_index_term', None)
+            if instance_method is not None:
+                term, wieght = instance_method()
+                vector = "setweight(to_tsvector('%s', coalesce('%s', '')), '%s')" % \
+                    (config, term, weight)
+                search_vector.append(vector)
+
         return ' || '.join(search_vector)
 
     def _get_vector_for_field(self, field_name, weight=None, config=None, using=None):
@@ -221,7 +230,7 @@ class SearchManagerMixIn(object):
         connection = connections[using]
         qn = connection.ops.quote_name
 
-        return "setweight(to_tsvector('%s', coalesce(%s.%s, '')), '%s')" % \
+        return "setweight(to_tsvector('%s', coalesce(CAST(%s.%s as TEXT), '')), '%s')" % \
                     (config, qn(self.model._meta.db_table), qn(field.column), weight)
 
 
@@ -316,7 +325,7 @@ class SearchQuerySet(QuerySet):
                 )
 
             qs = qs.extra(select=select_dict, where=[where], order_by=order)
-        
+
         return qs
 
 
