@@ -210,7 +210,7 @@ class SearchManagerMixIn(object):
             if instance_method is not None:
                 term, wieght = instance_method()
                 vector = "setweight(to_tsvector('%s', coalesce('%s', '')), '%s')" % \
-                    (config, term, weight)
+                    (config, term.replace("'", "''"), weight)
                 search_vector.append(vector)
 
         return ' || '.join(search_vector)
