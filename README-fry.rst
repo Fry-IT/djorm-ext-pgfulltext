@@ -1,0 +1,9 @@
+29.1.2016 - 0.9.1-1-fry
+=======================
+
+ * Removed db_index=True from VectorField. If db_index=False is passed to field,
+   the index has to be created manually as a GIN type, for example
+   CREATE INDEX table_search_index ON table USING gin(search_index)
+   See also
+   https://github.com/linuxlewis/djorm-ext-pgfulltext/issues/45
+   https://github.com/linuxlewis/djorm-ext-pgfulltext/issues/14
