@@ -83,8 +83,11 @@ class SearchManagerMixIn(object):
     https://docs.djangoproject.com/en/1.4/howto/initial-data/#providing-initial-sql-data
     """
 
-    def __init__(self, fields=None, search_field='search_index',
-            config='pg_catalog.english', auto_update_search_field=False):
+    def __init__(self,
+                 fields=None,
+                 search_field='search_index',
+                 config='pg_catalog.english',
+                 auto_update_search_field=False):
         self.search_field = search_field
         self.default_weight = 'D'
         self.config = config
@@ -97,27 +100,28 @@ class SearchManagerMixIn(object):
         '''
         Called automatically by Django when setting up the model class.
         '''
+        if not cls._meta.abstract:
+            # Attach this manager as _fts_manager in the model class.
+            if not getattr(cls, '_fts_manager', None):
+                cls._fts_manager = self
 
-        # Attach this manager as _fts_manager in the model class.
-        if not getattr(cls, '_fts_manager', None):
-            cls._fts_manager = self
+            # Add 'update_search_field' instance method, that calls manager's update_search_field.
+            if not getattr(cls, 'update_search_field', None):
+                def update_search_field(self, using=None, config=None):
+                    self._fts_manager.update_search_field(pk=self.pk, using=using, config=config, instance=instance)
 
-        # Add 'update_search_field' instance method, that calls manager's update_search_field.
-        if not getattr(cls, 'update_search_field', None):
-            def update_search_field(self, using=None, config=None):
-                self._fts_manager.update_search_field(pk=self.pk, using=using, config=config, instance=self)
-            setattr(cls, 'update_search_field', update_search_field)
+                setattr(cls, 'update_search_field', update_search_field)
 
-        if self.auto_update_search_field:
-            models.signals.post_save.connect(auto_update_search_field_handler, sender=cls)
+            if self.auto_update_search_field:
+                models.signals.post_save.connect(auto_update_search_field_handler, sender=cls)
 
         super(SearchManagerMixIn, self).contribute_to_class(cls, name)
 
-    def get_query_set(self):
+    def get_queryset(self):
         return SearchQuerySet(model=self.model, using=self._db)
 
     def search(self, *args, **kwargs):
-        return self.get_query_set().search(*args, **kwargs)
+        return self.get_queryset().search(*args, **kwargs)
 
     def update_search_field(self, pk=None, config=None, using=None, instance=None):
         '''
@@ -230,8 +234,11 @@ class SearchManagerMixIn(object):
         connection = connections[using]
         qn = connection.ops.quote_name
 
-        return "setweight(to_tsvector('%s', coalesce(CAST(%s.%s as TEXT), '')), '%s')" % \
-                    (config, qn(self.model._meta.db_table), qn(field.column), weight)
+        # Radim  - the commented lines were in conflict with 0.9.3
+        # return "setweight(to_tsvector('%s', coalesce(CAST(%s.%s as TEXT), '')), '%s')" % \
+        #             (config, qn(self.model._meta.db_table), qn(field.column), weight)
+        return "setweight(to_tsvector('%s', coalesce(%s.%s, '')), '%s')" % \
+               (config, qn(self.model._meta.db_table), qn(field.column), weight)
 
 
 class SearchQuerySet(QuerySet):
@@ -311,7 +318,7 @@ class SearchQuerySet(QuerySet):
             if rank_field:
                 select_dict[rank_field] = '%s(%s, %s, %d)' % (
                     rank_function,
-                    full_search_field,
+                    search_vector,
                     ts_query,
                     rank_normalization
                 )

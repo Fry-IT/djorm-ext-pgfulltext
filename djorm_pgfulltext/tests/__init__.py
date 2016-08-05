@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from django.utils.unittest import TestCase
+import django
+from django.db import connection
+from django.db import transaction
 from django.utils import unittest
-from django.db import connection, transaction
+from django.utils.unittest import TestCase
 
-from .models import Person, Person2, Person3, Book
+from .models import Book
+from .models import Person
+from .models import Person2
+from .models import Person3
 
-class TestFts(TestCase):
+
+class FtsSetUpMixin:
     def setUp(self):
         Person.objects.all().delete()
 
@@ -20,6 +26,7 @@ class TestFts(TestCase):
         )
 
 
+class TestFts(FtsSetUpMixin, TestCase):
     def test_self_update_index(self):
         obj = Person2.objects.create(
             name=u'Pepa',
@@ -116,3 +123,40 @@ class TestFts(TestCase):
         qs = Book.objects.search(query='Python', headline_field='headline', headline_document='name')
 
         self.assertEqual(qs[0].headline, 'Learning <b>Python</b>')
+
+
+class TestFullTextLookups(FtsSetUpMixin, TestCase):
+
+    def skipUnlessDjango17(self):
+        if django.VERSION[:2] < (1, 7):
+            self.skipTest("Requires Django>=1.7")
+
+    def setUp(self):
+        self.skipUnlessDjango17()
+        super(TestFullTextLookups, self).setUp()
+
+    def test_full_text_lookups(self):
+        self.assertEquals(
+            self.p1.pk,
+            Person.objects.filter(search_index__ft_startswith='programmer')[0].pk)
+
+    def test_user_input(self):
+        for test_str in ["())(#*&|||)()( )( ) )( )(|| | | |&",
+                         "test test", "test !test", "test & test",
+                         "test | test", "test (test)", "test(",
+                         "test       &&&& test", "\\'test"]:
+            list(Person.objects.filter(search_index__ft_startswith=test_str))
+
+    @unittest.skip("Needs some love. Raises UnicodeEncodeError.")
+    def test_user_input_utf8(self):
+        for test_str in ["łódź"]:
+            list(Person.objects.filter(search_index__ft_startswith=test_str))
+
+    def test_alternative_config(self):
+        from djorm_pgfulltext.fields import TSConfig
+
+        p = Person.objects.filter(
+            search_index__ft_startswith=[
+                TSConfig('names'), 'progra'])[0]
+
+        self.assertEquals(p.pk, self.p1.pk)

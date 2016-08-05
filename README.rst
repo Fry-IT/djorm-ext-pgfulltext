@@ -5,7 +5,7 @@ djorm-ext-pgfulltext
 Pgfulltext module of django orm extensions package (collection of third party plugins build in one unified package).
 
 - Now compatible with python2 and python3 with same code base.
-- Ready for django 1.3, 1.4 and 1.5
+- Ready for django 1.3, 1.4, 1.5 and 1.6
 
 
 Introduction
@@ -73,6 +73,16 @@ To search, use the ``search`` method of the manager. The current implementation,
 FTS extension by default uses plainto_tsquery instead of to_tosquery, for this reason the use of raw parameter.
 
 
+Update search field:
+^^^^^^^^^^^^^^^^^^^^
+
+For manual updating all search fields use management command ``update_search_field``:
+
+.. code-block:: python
+
+    ./manage.py update_search_field [options] appname [model]
+
+
 General notes:
 ^^^^^^^^^^^^^^
 
@@ -85,9 +95,26 @@ You must ensure you have installed the extension `unaccent`:
 
 You can install this extension on template1 database for make this extension automatically available for all new created databases.
 
+Contributing
+------------
+
+The first step of contributing is being able to run the unit tests. We provide a seet of ``docker`` containers and a ``docker-compose`` file to help you achieve this task.
+
+Running the tests
+^^^^^^^^^^^^^^^^^
+
+The only command you need to run the tests is:
+
+.. code-block:: bash
+
+  docker-compose run --rm djorm python3 testing/runtests.py
 
 Changelog
 ---------
+
+**0.9.2**
+
+- Django 1.7 lookups support.
 
 **0.9**
 
@@ -97,4 +124,3 @@ Changelog
 .. image:: https://d2weczhvl823v0.cloudfront.net/djangonauts/djorm-ext-pgfulltext/trend.png
    :alt: Bitdeli badge
    :target: https://bitdeli.com/free
-

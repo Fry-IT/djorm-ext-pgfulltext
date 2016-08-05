@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 
 sys.path.insert(0, '..')
 
@@ -10,9 +12,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'test',
-        'USER': '',
+        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
         'PASSWORD': '',
-        'HOST': 'localhost',
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
         'PORT': '',
     }
 }
