@@ -108,7 +108,7 @@ class SearchManagerMixIn(object):
             # Add 'update_search_field' instance method, that calls manager's update_search_field.
             if not getattr(cls, 'update_search_field', None):
                 def update_search_field(self, using=None, config=None):
-                    self._fts_manager.update_search_field(pk=self.pk, using=using, config=config, instance=instance)
+                    self._fts_manager.update_search_field(pk=self.pk, using=using, config=config)
 
                 setattr(cls, 'update_search_field', update_search_field)
 
@@ -234,10 +234,8 @@ class SearchManagerMixIn(object):
         connection = connections[using]
         qn = connection.ops.quote_name
 
-        # Radim  - the commented lines were in conflict with 0.9.3
-        # return "setweight(to_tsvector('%s', coalesce(CAST(%s.%s as TEXT), '')), '%s')" % \
-        #             (config, qn(self.model._meta.db_table), qn(field.column), weight)
-        return "setweight(to_tsvector('%s', coalesce(%s.%s, '')), '%s')" % \
+        # Radim  - cast to text to be able to process eg. case_number
+        return "setweight(to_tsvector('%s', coalesce(CAST(%s.%s as TEXT), '')), '%s')" % \
                (config, qn(self.model._meta.db_table), qn(field.column), weight)
 
 
