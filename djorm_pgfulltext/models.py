@@ -108,7 +108,7 @@ class SearchManagerMixIn(object):
             # Add 'update_search_field' instance method, that calls manager's update_search_field.
             if not getattr(cls, 'update_search_field', None):
                 def update_search_field(self, using=None, config=None):
-                    self._fts_manager.update_search_field(pk=self.pk, using=using, config=config)
+                    self._fts_manager.update_search_field(pk=self.pk, using=using, config=config, instance=self)
 
                 setattr(cls, 'update_search_field', update_search_field)
 
@@ -179,7 +179,6 @@ class SearchManagerMixIn(object):
         Parse fields list into a correct format needed by this manager.
         If any field does not exist, raise ValueError.
         """
-
         parsed_fields = set()
 
         if fields is not None and isinstance(fields, (list, tuple)):
