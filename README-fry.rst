@@ -13,3 +13,8 @@
 
  * Merged with upstream 0.9.3 tag to get Django 1.8 compatibility
    We still use some custom behavior.
+
+8.8.2016 - 0.9.3-2-fry
+======================
+
+ * Added missing parameter for update index function
